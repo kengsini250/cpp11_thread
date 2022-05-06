@@ -34,7 +34,10 @@ private:
 					});
 				Runnable* func;
 				bool ok = self->queue.pop(func);
-				if (ok) func->run();
+				if (ok) {
+					func->run(); 
+					delete func;
+				}
 			}
 		}
 	};

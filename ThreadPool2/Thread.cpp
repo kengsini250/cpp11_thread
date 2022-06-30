@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <random>
 
+//模拟数据包
 struct Data
 {
 	int id;

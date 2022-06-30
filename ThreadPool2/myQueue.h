@@ -6,13 +6,6 @@
 #include <iostream>
 
 
-class Runnable {
-public:
-	virtual ~Runnable(){}
-	virtual void run() = 0;
-};
-
-
 template<class T>
 class MyQueue
 {
@@ -22,11 +15,13 @@ public:
 	void push(T& t) {
 		std::lock_guard<std::mutex> lk(lock);
 		_q.push(t);
+		//std::cout << "size & : " << _q.size() << "\n";
 	}
 
 	void push(T&& t) {
 		std::lock_guard lk(lock);
 		_q.push(t);
+		std::cout << "size && : " << _q.size() << "\n";
 	}
 
 	bool pop(T& t) {
@@ -35,6 +30,7 @@ public:
 			return false;
 		t = _q.front();
 		_q.pop();
+		//std::cout << "pop  : " << _q.size() << "\n";
 		return true;
 	}
 
@@ -49,6 +45,4 @@ public:
 		return _q.empty();
 	}
 };
-
-
 

@@ -5,10 +5,13 @@
 #include <thread>
 #include <future>
 
+
+
 class ThreadPool
 {
 private:
-	MyQueue<Runnable*> queue;
+	MyQueue< std::function<void()>> queue;
+
 	std::vector<std::thread> threads;
 	std::mutex lock;
 	std::condition_variable m_conditional_lock;
@@ -25,18 +28,21 @@ private:
 
 
 		void operator()() {
+			std::function<void()> func;
+			bool ok;
 		
 			while (!self->end) {
-				std::unique_lock<std::mutex> lock(self->lock);
-				self->m_conditional_lock.wait(lock, [&] {
-					if (self->end == true) return true;
-					return !self->queue.empty(); 
-					});
-				Runnable* func;
-				bool ok = self->queue.pop(func);
-				if (ok) {
-					func->run(); 
-					delete func;
+				{
+					std::unique_lock<std::mutex> lock(self->lock);
+					if (self->queue.empty()) {
+						self->m_conditional_lock.wait(lock);
+					}
+					ok = self->queue.pop(func);
+				}
+
+				if (ok) { 
+					std::cout << "-->id : " << id << " GO\n";
+					func(); 
 				}
 			}
 		}
@@ -50,9 +56,24 @@ public:
 		}
 	}
 
-	void push(Runnable*r) {
-		queue.push(r);
+	template <typename F, typename... Args>
+	auto push(F&& f, Args &&...args) 
+		-> std::shared_future<decltype(f(args...))>
+	{
+		std::function<decltype(f(args...))()> func = 
+			std::bind(
+				std::forward<F>(f), 
+				std::forward<Args>(args)...
+			);
+
+		auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>>(func);
+		std::function<void()> warpper_func = [task_ptr]()
+		{
+			(*task_ptr)();
+		};
+		queue.push(warpper_func);
 		m_conditional_lock.notify_one();
+		return task_ptr->get_future();
 	}
 
 	void shutdown() {
